@@ -74,13 +74,11 @@ export function AttendanceView() {
   });
 
   const toTitleCase = (str: string): string =>
-  str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-
+    str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
 
   const notFound = !dataFiltered.length && !!filterName;
 
@@ -90,6 +88,31 @@ export function AttendanceView() {
 
   const handleCloseDetail = () => {
     setSelectedAttendance(null);
+  };
+
+  // --- FUNGSI DELETE SELECTED ---
+  const handleDeleteSelected = async () => {
+    if (table.selected.length === 0) return;
+
+    const confirm = window.confirm('Yakin ingin menghapus data yang dipilih?');
+    if (!confirm) return;
+
+    try {
+      // Hapus satu per satu lewat API
+      await Promise.all(
+        table.selected.map((id) => api.delete(`/history/${id}`))
+      );
+
+      // Update state, buang data yg sudah dihapus
+      setAttendances((prev) =>
+        prev.filter((item) => !table.selected.includes(String(item.id)))
+      );
+
+      // Reset selected rows
+      table.onSelectAllRows(false, []);
+    } catch (error) {
+      console.error('Gagal menghapus data:', error);
+    }
   };
 
   return (
@@ -102,6 +125,7 @@ export function AttendanceView() {
             setFilterName(event.target.value);
             table.onResetPage();
           }}
+          onDeleteSelected={handleDeleteSelected} // <-- tombol hapus
         />
 
         <Scrollbar>
