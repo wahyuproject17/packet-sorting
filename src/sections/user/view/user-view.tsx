@@ -1,5 +1,4 @@
-import { useState, useCallback } from 'react';
-
+import { useState, useCallback, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
@@ -8,13 +7,14 @@ import TableBody from '@mui/material/TableBody';
 import Typography from '@mui/material/Typography';
 import TableContainer from '@mui/material/TableContainer';
 import TablePagination from '@mui/material/TablePagination';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
-import { _users } from 'src/_mock';
-import { DashboardContent } from 'src/layouts/dashboard';
-
-import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-
 import { TableNoData } from '../table-no-data';
 import { UserTableRow } from '../user-table-row';
 import { UserTableHead } from '../user-table-head';
@@ -22,46 +22,106 @@ import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../user-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
-import type { UserProps } from '../user-table-row';
-
-// ----------------------------------------------------------------------
+import api from '../../../services/api'; // Import API
+import { UserProps } from '../types';
 
 export function UserView() {
   const table = useTable();
 
+  const [users, setUsers] = useState<UserProps[]>([]);
   const [filterName, setFilterName] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserProps | null>(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
-  const dataFiltered: UserProps[] = applyFilter({
-    inputData: _users,
+  // Snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+  const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Tanggal tidak tersedia';
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('id-ID', options);
+  };
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/users');
+        setUsers(response.data.data.users);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleOpenDeleteDialog = () => {
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await Promise.all(
+        table.selected.map((userId) => api.delete(`/users/${userId}`))
+      );
+      const updatedUsers = users.filter((user) => !table.selected.includes(user.id));
+      setUsers(updatedUsers);
+      table.onSelectAllRows(false, []);
+      handleCloseDeleteDialog();
+      setSnackbarMessage('Berhasil menghapus pengguna yang dipilih.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Error deleting users:', error);
+      setSnackbarMessage('Gagal menghapus pengguna.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const dataFiltered = applyFilter({
+    inputData: users,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
 
   const notFound = !dataFiltered.length && !!filterName;
 
+  const handleViewDetail = (user: UserProps) => {
+    setSelectedUser(user);
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedUser(null);
+  };
+
   return (
-    <DashboardContent>
+    <Box>
       <Box display="flex" alignItems="center" mb={5}>
         <Typography variant="h4" flexGrow={1}>
-          Users
+          Pengguna
         </Typography>
-        <Button
-          variant="contained"
-          color="inherit"
-          startIcon={<Iconify icon="mingcute:add-line" />}
-        >
-          New user
-        </Button>
       </Box>
 
       <Card>
         <UserTableToolbar
           numSelected={table.selected.length}
           filterName={filterName}
-          onFilterName={(event: React.ChangeEvent<HTMLInputElement>) => {
+          onFilterName={(event) => {
             setFilterName(event.target.value);
             table.onResetPage();
           }}
+          onDeleteSelected={handleOpenDeleteDialog}
         />
 
         <Scrollbar>
@@ -70,21 +130,19 @@ export function UserView() {
               <UserTableHead
                 order={table.order}
                 orderBy={table.orderBy}
-                rowCount={_users.length}
+                rowCount={users.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
                 onSelectAllRows={(checked) =>
                   table.onSelectAllRows(
                     checked,
-                    _users.map((user) => user.id)
+                    users.map((user) => user.id)
                   )
                 }
                 headLabel={[
-                  { id: 'name', label: 'Name' },
-                  { id: 'company', label: 'Company' },
-                  { id: 'role', label: 'Role' },
-                  { id: 'isVerified', label: 'Verified', align: 'center' },
-                  { id: 'status', label: 'Status' },
+                  { id: 'full_name', label: 'Nama Lengkap' },
+                  { id: 'email', label: 'Email' },
+                  { id: 'createdAt', label: 'Tanggal Pembuatan' },
                   { id: '' },
                 ]}
               />
@@ -97,15 +155,16 @@ export function UserView() {
                   .map((row) => (
                     <UserTableRow
                       key={row.id}
-                      row={row}
+                      row={{ ...row, createdAt: formatDate(row.createdAt) }}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
+                      onViewDetail={() => handleViewDetail(row)}
                     />
                   ))}
 
                 <TableEmptyRows
                   height={68}
-                  emptyRows={emptyRows(table.page, table.rowsPerPage, _users.length)}
+                  emptyRows={emptyRows(table.page, table.rowsPerPage, users.length)}
                 />
 
                 {notFound && <TableNoData searchQuery={filterName} />}
@@ -117,22 +176,79 @@ export function UserView() {
         <TablePagination
           component="div"
           page={table.page}
-          count={_users.length}
+          count={users.length}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           rowsPerPageOptions={[5, 10, 25]}
           onRowsPerPageChange={table.onChangeRowsPerPage}
         />
       </Card>
-    </DashboardContent>
+
+      {/* Dialog konfirmasi hapus */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Konfirmasi Hapus</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Yakin ingin menghapus {table.selected.length} pengguna terpilih?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit">
+            Batal
+          </Button>
+          <Button onClick={handleDeleteSelected} color="error" variant="contained">
+            Hapus
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      {selectedUser && (
+        <Dialog open={!!selectedUser} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
+          <DialogTitle>Detail Pengguna</DialogTitle>
+          <DialogContent dividers>
+            <Typography variant="body1">
+              <strong>Nama Lengkap:</strong> {selectedUser.full_name}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Email:</strong> {selectedUser.email}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Tanggal Pembuatan:</strong> {formatDate(selectedUser.createdAt)}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDetail} color="primary">
+              Tutup
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
+          elevation={6}
+          variant="filled"
+        >
+          {snackbarMessage}
+        </MuiAlert>
+      </Snackbar>
+    </Box>
   );
 }
 
-// ----------------------------------------------------------------------
-
+// Hook useTable
 export function useTable() {
   const [page, setPage] = useState(0);
-  const [orderBy, setOrderBy] = useState('name');
+  const [orderBy, setOrderBy] = useState('fullname');
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selected, setSelected] = useState<string[]>([]);
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');

@@ -15,11 +15,11 @@ import { Iconify } from 'src/components/iconify';
 export default function App() {
   useScrollToTop();
 
-  const githubButton = (
+  const landmarkButton = (
     <Fab
       size="medium"
-      aria-label="Github"
-      href="https://github.com/minimal-ui-kit/material-kit-react"
+      aria-label="Landmark"
+      href="https://jdihdprd.semarangkota.go.id/"
       sx={{
         zIndex: 9,
         right: 20,
@@ -31,14 +31,14 @@ export default function App() {
         color: 'common.white',
       }}
     >
-      <Iconify width={24} icon="eva:github-fill" />
+      <Iconify width={24} icon="fa-solid:landmark" />
     </Fab>
   );
 
   return (
     <ThemeProvider>
       <Router />
-      {githubButton}
+      {landmarkButton}
     </ThemeProvider>
   );
 }

@@ -1,164 +1,196 @@
+import { useEffect, useState } from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
+} from '@mui/material';
 
-import { _tasks, _posts, _timeline } from 'src/_mock';
 import { DashboardContent } from 'src/layouts/dashboard';
-
-import { AnalyticsNews } from '../analytics-news';
-import { AnalyticsTasks } from '../analytics-tasks';
-import { AnalyticsCurrentVisits } from '../analytics-current-visits';
-import { AnalyticsOrderTimeline } from '../analytics-order-timeline';
-import { AnalyticsWebsiteVisits } from '../analytics-website-visits';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
-import { AnalyticsTrafficBySite } from '../analytics-traffic-by-site';
-import { AnalyticsCurrentSubject } from '../analytics-current-subject';
-import { AnalyticsConversionRates } from '../analytics-conversion-rates';
+import api from '../../../services/api';
 
-// ----------------------------------------------------------------------
+interface SmartBoxData {
+  id: number;
+  status: string;
+  packet_key?: string;
+  user_key?: string;
+  packet_name?:string;
+}
 
-export function OverviewAnalyticsView() {
+export function AttendanceAnalyticsView() {
+  const TOTAL_BOXES = 3;
+
+  const [smartBoxes, setSmartBoxes] = useState<SmartBoxData[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
+  const [packetName, setPacketName] = useState('');
+  const [packetKey, setPacketKey] = useState('');
+  const [userKey, setUserKey] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailData, setDetailData] = useState<SmartBoxData | null>(null);
+
+  const fetchSmartBoxData = async () => {
+    try {
+      const response = await api.get('/packet');
+      const data = response.data.packets;
+
+      // Pastikan tetap ada 3 box
+      const completeBoxes: SmartBoxData[] = [];
+      for (let i = 1; i <= TOTAL_BOXES; i += 1) {
+        const existing = data.find((packet: any) => packet.id === i);
+        if (existing) {
+          completeBoxes.push({
+            id: i,
+            status: existing.status,
+            packet_name: existing.packet_name,
+            packet_key: existing.packet_key,
+            user_key: existing.user_key,
+          });
+        } else {
+          completeBoxes.push({ id: i, status: 'kosong' });
+        }
+
+      }
+
+      setSmartBoxes(completeBoxes);
+    } catch (error) {
+      console.error('Error fetching SmartBox data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSmartBoxData();
+  }, []);
+
+  const statusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'terisi':
+        return 'success';
+      case 'kosong':
+        return 'error';
+      default:
+        return 'warning';
+    }
+  };
+
+  const handleBoxClick = (box: SmartBoxData) => {
+  if (
+  (!box.status || box.status.toLowerCase() === 'kosong') &&
+  (!box.packet_key || !box.user_key)
+) {
+    setSelectedBoxId(box.id);
+    setOpenDialog(true);
+  } else if (box.status === 'terisi') {
+    setDetailData(box);
+    setDetailDialogOpen(true);
+  }
+};
+
+
+  const handleSubmit = async () => {
+    try {
+      await api.put(`/packet/${selectedBoxId}`, {
+        box_id: selectedBoxId,
+        packet_name: packetName,
+        packet_key: packetKey,
+        user_key: userKey,
+        status: "terisi"
+      });
+      setOpenDialog(false);
+      setPacketName('');
+      setPacketKey('');
+      setUserKey('');
+      await fetchSmartBoxData(); // refresh data
+    } catch (error) {
+      console.error('Failed to update SmartBox:', error);
+    }
+  };
+
   return (
     <DashboardContent maxWidth="xl">
       <Typography variant="h4" sx={{ mb: { xs: 3, md: 5 } }}>
         Hi, Welcome back 👋
       </Typography>
 
-      <Grid container spacing={3}>
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Weekly sales"
-            percent={2.6}
-            total={714000}
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-bag.svg" />}
-            chart={{
-              categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-              series: [22, 8, 35, 50, 82, 84, 77, 12],
-            }}
+      {loading ? (
+        <Typography>Loading SmartBoxes...</Typography>
+      ) : (
+        <Grid container spacing={3}>
+          {smartBoxes.map((box) => (
+            <Grid key={box.id} xs={12} sm={6} md={4}>
+              <Box
+                onClick={() => handleBoxClick(box)}
+                sx={{ cursor: box.status === 'kosong' ? 'pointer' : 'default' }}
+              >
+                <AnalyticsWidgetSummary
+                  title={`Smart Box ${box.id}`}
+                  percent={0}
+                  total={box.status === 'terisi' ? 1 : 0}
+                  color={statusColor(box.status)}
+                  icon={<img alt="box" src="/assets/icons/glass/ic-box.svg" />}
+                  chart={{ categories: [], series: [] }}
+                />
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth="xs" fullWidth>
+      <DialogTitle>Detail Box</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="subtitle1"><strong>ID Box:</strong> {detailData?.id}</Typography>
+        <Typography variant="subtitle1"><strong>Nama Paket:</strong> {detailData?.packet_name || '-'}</Typography>
+        <Typography variant="subtitle1"><strong>Status:</strong> {detailData?.status}</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setDetailDialogOpen(false)}>Tutup</Button>
+      </DialogActions>
+    </Dialog>
+
+
+      {/* Dialog Form */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Isi Data SmartBox {selectedBoxId}</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Nama Paket"
+            fullWidth
+            value={packetName}
+            onChange={(e) => setPacketName(e.target.value)}
+            margin="normal"
           />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="New users"
-            percent={-0.1}
-            total={1352831}
-            color="secondary"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
-            chart={{
-              categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-              series: [56, 47, 40, 62, 73, 30, 23, 54],
-            }}
+          <TextField
+            label="Packet Key"
+            fullWidth
+            value={packetKey}
+            onChange={(e) => setPacketKey(e.target.value)}
+            margin="normal"
           />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Purchase orders"
-            percent={2.8}
-            total={1723315}
-            color="warning"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-buy.svg" />}
-            chart={{
-              categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-              series: [40, 70, 50, 28, 70, 75, 7, 64],
-            }}
+          <TextField
+            label="User Key"
+            fullWidth
+            value={userKey}
+            onChange={(e) => setUserKey(e.target.value)}
+            margin="normal"
           />
-        </Grid>
-
-        <Grid xs={12} sm={6} md={3}>
-          <AnalyticsWidgetSummary
-            title="Messages"
-            percent={3.6}
-            total={234}
-            color="error"
-            icon={<img alt="icon" src="/assets/icons/glass/ic-glass-message.svg" />}
-            chart={{
-              categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-              series: [56, 30, 23, 54, 47, 40, 62, 73],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={4}>
-          <AnalyticsCurrentVisits
-            title="Current visits"
-            chart={{
-              series: [
-                { label: 'America', value: 3500 },
-                { label: 'Asia', value: 2500 },
-                { label: 'Europe', value: 1500 },
-                { label: 'Africa', value: 500 },
-              ],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={8}>
-          <AnalyticsWebsiteVisits
-            title="Website visits"
-            subheader="(+43%) than last year"
-            chart={{
-              categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
-              series: [
-                { name: 'Team A', data: [43, 33, 22, 37, 67, 68, 37, 24, 55] },
-                { name: 'Team B', data: [51, 70, 47, 67, 40, 37, 24, 70, 24] },
-              ],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={8}>
-          <AnalyticsConversionRates
-            title="Conversion rates"
-            subheader="(+43%) than last year"
-            chart={{
-              categories: ['Italy', 'Japan', 'China', 'Canada', 'France'],
-              series: [
-                { name: '2022', data: [44, 55, 41, 64, 22] },
-                { name: '2023', data: [53, 32, 33, 52, 13] },
-              ],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={4}>
-          <AnalyticsCurrentSubject
-            title="Current subject"
-            chart={{
-              categories: ['English', 'History', 'Physics', 'Geography', 'Chinese', 'Math'],
-              series: [
-                { name: 'Series 1', data: [80, 50, 30, 40, 100, 20] },
-                { name: 'Series 2', data: [20, 30, 40, 80, 20, 80] },
-                { name: 'Series 3', data: [44, 76, 78, 13, 43, 10] },
-              ],
-            }}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={8}>
-          <AnalyticsNews title="News" list={_posts.slice(0, 5)} />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={4}>
-          <AnalyticsOrderTimeline title="Order timeline" list={_timeline} />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={4}>
-          <AnalyticsTrafficBySite
-            title="Traffic by site"
-            list={[
-              { value: 'facebook', label: 'Facebook', total: 323234 },
-              { value: 'google', label: 'Google', total: 341212 },
-              { value: 'linkedin', label: 'Linkedin', total: 411213 },
-              { value: 'twitter', label: 'Twitter', total: 443232 },
-            ]}
-          />
-        </Grid>
-
-        <Grid xs={12} md={6} lg={8}>
-          <AnalyticsTasks title="Tasks" list={_tasks} />
-        </Grid>
-      </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            Simpan
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardContent>
   );
 }

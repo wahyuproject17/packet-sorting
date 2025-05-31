@@ -7,18 +7,17 @@ import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgr
 import { varAlpha } from 'src/theme/styles';
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
+import { ProtectedRoute } from './protected-route';
 
-// ----------------------------------------------------------------------
+// Halaman yang menggunakan lazy loading
+const HomePage = lazy(() => import('src/pages/home'));
+const BlogPage = lazy(() => import('src/pages/blog'));
+const UserPage = lazy(() => import('src/pages/user'));
+const SignInPage = lazy(() => import('src/pages/sign-in'));
+const AttendancePage = lazy(() => import('src/pages/attendance'));
+const Page404 = lazy(() => import('src/pages/page-not-found'));
 
-export const HomePage = lazy(() => import('src/pages/home'));
-export const BlogPage = lazy(() => import('src/pages/blog'));
-export const UserPage = lazy(() => import('src/pages/user'));
-export const SignInPage = lazy(() => import('src/pages/sign-in'));
-export const ProductsPage = lazy(() => import('src/pages/products'));
-export const Page404 = lazy(() => import('src/pages/page-not-found'));
-
-// ----------------------------------------------------------------------
-
+// Komponen fallback untuk suspense
 const renderFallback = (
   <Box display="flex" alignItems="center" justifyContent="center" flex="1 1 auto">
     <LinearProgress
@@ -32,6 +31,7 @@ const renderFallback = (
   </Box>
 );
 
+// Router utama
 export function Router() {
   return useRoutes([
     {
@@ -43,9 +43,30 @@ export function Router() {
         </DashboardLayout>
       ),
       children: [
-        { element: <HomePage />, index: true },
-        { path: 'user', element: <UserPage /> },
-        { path: 'products', element: <ProductsPage /> },
+        {
+          element: (
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          ),
+          index: true,
+        },
+        {
+          path: 'user',
+          element: (
+            <ProtectedRoute>
+              <UserPage />
+            </ProtectedRoute>
+          ),
+        },
+        {
+          path: 'history',
+          element: (
+            <ProtectedRoute>
+              <AttendancePage />
+            </ProtectedRoute>
+          ),
+        },
         { path: 'blog', element: <BlogPage /> },
       ],
     },

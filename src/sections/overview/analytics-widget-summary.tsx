@@ -27,6 +27,7 @@ type Props = CardProps & {
     categories: string[];
     options?: ChartOptions;
   };
+  hideChart?: boolean;  // Tambahan untuk sembunyikan chart
 };
 
 export function AnalyticsWidgetSummary({
@@ -37,6 +38,7 @@ export function AnalyticsWidgetSummary({
   percent,
   color = 'primary',
   sx,
+  hideChart = false,
   ...other
 }: Props) {
   const theme = useTheme();
@@ -112,13 +114,15 @@ export function AnalyticsWidgetSummary({
           <Box sx={{ typography: 'h4' }}>{fShortenNumber(total)}</Box>
         </Box>
 
-        <Chart
-          type="line"
-          series={[{ data: chart.series }]}
-          options={chartOptions}
-          width={84}
-          height={56}
-        />
+        {!hideChart && (
+          <Chart
+            type="line"
+            series={[{ data: chart.series }]}
+            options={chartOptions}
+            width={84}
+            height={56}
+          />
+        )}
       </Box>
 
       <SvgColor

@@ -1,4 +1,4 @@
-import type { UserProps } from './user-table-row';
+import type { UserProps } from './types'; // Import UserProps from types
 
 // ----------------------------------------------------------------------
 
@@ -70,8 +70,9 @@ export function applyFilter({ inputData, comparator, filterName }: ApplyFilterPr
   inputData = stabilizedThis.map((el) => el[0]);
 
   if (filterName) {
+    // Filter by fullname instead of name
     inputData = inputData.filter(
-      (user) => user.name.toLowerCase().indexOf(filterName.toLowerCase()) !== -1
+      (user) => user.full_name.toLowerCase().indexOf(filterName.toLowerCase()) !== -1
     );
   }
 
