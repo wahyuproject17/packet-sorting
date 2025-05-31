@@ -14,15 +14,10 @@ api.interceptors.request.use(
   (config) => {
     try {
       // Ambil data pengguna dari localStorage
-      const userData = localStorage.getItem('user');
-
-      if (userData) {
-        const parsedUserData = JSON.parse(userData); // Parse data JSON
-        const token = parsedUserData.token; // Ambil token dari data pengguna
+      const token = localStorage.getItem('token');
 
         if (token) {
-          config.headers.Authorization = `Bearer ${token}`; // Tambahkan token ke header Authorization
-        }
+        config.headers.Authorization = `Bearer ${token}`; // Tambahkan token ke header Authorization
       }
     } catch (error) {
       console.error("Gagal mengambil token dari localStorage:", error);
