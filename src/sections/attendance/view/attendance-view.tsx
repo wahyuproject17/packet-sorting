@@ -15,11 +15,11 @@ import Avatar from '@mui/material/Avatar';
 
 import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
-import { AttendanceTableRow } from '../attendance-table-row';
+import { HistoryTableRow } from '../attendance-table-row';
 import { AttendanceTableHead } from '../attendance-table-head';
 import { TableEmptyRows } from '../table-empty-rows';
 import { AttendanceTableToolbar } from '../attendance-table-toolbar';
-import { emptyRows, applyFilter, getComparator } from '../utils';
+import { emptyRows, applyHistoryFilter, getComparator } from '../utils';
 
 import api from '../../../services/api';
 
@@ -36,12 +36,16 @@ const formatDate = (dateString: string): string => {
 };
 
 interface Attendance {
-  id: string;
-  userId: string;
-  packetId: string;
+  id: number;
+  id_packet: number;
+  packet_name: string;
   status: string;
-  courier_photo?: string;
+  entry_date: string;
+  exit_date: string;
+  courier_photo?: string | null;
+  user_photo?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export function AttendanceView() {
@@ -63,11 +67,20 @@ export function AttendanceView() {
     fetchAttendances();
   }, []);
 
-  const dataFiltered = applyFilter({
+  const dataFiltered = applyHistoryFilter({
     inputData: attendances,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
+
+  const toTitleCase = (str: string): string =>
+  str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+
 
   const notFound = !dataFiltered.length && !!filterName;
 
@@ -103,14 +116,14 @@ export function AttendanceView() {
                 onSelectAllRows={(checked: boolean) =>
                   table.onSelectAllRows(
                     checked,
-                    attendances.map((attendance) => attendance.id)
+                    attendances.map((attendance) => String(attendance.id))
                   )
                 }
                 headLabel={[
-                  { id: 'userId', label: 'User ID' },
-                  { id: 'packetId', label: 'Packet ID' },
+                  { id: 'packet_name', label: 'Nama Paket' },
+                  { id: 'entry_date', label: 'Waktu Masuk' },
+                  { id: 'exit_date', label: 'Waktu Keluar' },
                   { id: 'status', label: 'Status' },
-                  { id: 'createdAt', label: 'Tanggal' },
                   { id: '', label: '' },
                 ]}
               />
@@ -121,11 +134,11 @@ export function AttendanceView() {
                     table.page * table.rowsPerPage + table.rowsPerPage
                   )
                   .map((row) => (
-                    <AttendanceTableRow
+                    <HistoryTableRow
                       key={row.id}
                       row={row}
-                      selected={table.selected.includes(row.id)}
-                      onSelectRow={() => table.onSelectRow(row.id)}
+                      selected={table.selected.includes(String(row.id))}
+                      onSelectRow={() => table.onSelectRow(String(row.id))}
                       onViewDetail={() => handleViewDetail(row)}
                     />
                   ))}
@@ -154,19 +167,19 @@ export function AttendanceView() {
 
       {selectedAttendance && (
         <Dialog open={!!selectedAttendance} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
-          <DialogTitle>Detail Presensi</DialogTitle>
+          <DialogTitle>Detail Histori</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body1">
-              <strong>User ID:</strong> {selectedAttendance.userId}
+              <strong>Nama Paket:</strong> {toTitleCase(selectedAttendance.packet_name)}
             </Typography>
             <Typography variant="body1">
-              <strong>Packet ID:</strong> {selectedAttendance.packetId}
+              <strong>Waktu Masuk:</strong> {formatDate(selectedAttendance.entry_date)}
             </Typography>
             <Typography variant="body1">
-              <strong>Status:</strong> {selectedAttendance.status}
+              <strong>Waktu Keluar:</strong> {formatDate(selectedAttendance.exit_date)}
             </Typography>
             <Typography variant="body1">
-              <strong>Tanggal:</strong> {formatDate(selectedAttendance.createdAt)}
+              <strong>Status:</strong> {toTitleCase(selectedAttendance.status)}
             </Typography>
             {selectedAttendance.courier_photo && (
               <Box mt={2}>
@@ -174,6 +187,17 @@ export function AttendanceView() {
                 <Avatar
                   alt="Courier"
                   src={selectedAttendance.courier_photo}
+                  sx={{ width: 100, height: 100 }}
+                  variant="rounded"
+                />
+              </Box>
+            )}
+            {selectedAttendance.user_photo && (
+              <Box mt={2}>
+                <Typography variant="body1"><strong>Foto User:</strong></Typography>
+                <Avatar
+                  alt="User"
+                  src={selectedAttendance.user_photo}
                   sx={{ width: 100, height: 100 }}
                   variant="rounded"
                 />
@@ -193,7 +217,7 @@ export function AttendanceView() {
 
 export function useTable() {
   const [page, setPage] = useState(0);
-  const [orderBy, setOrderBy] = useState<string>('userId');
+  const [orderBy, setOrderBy] = useState<string>('id_packet');
   const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [selected, setSelected] = useState<string[]>([]);
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');

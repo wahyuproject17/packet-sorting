@@ -1,17 +1,28 @@
 import React from 'react';
 import { TableRow, TableCell, Checkbox, Button } from '@mui/material';
 
-interface AttendanceTableRowProps {
+interface HistoryTableRowProps {
   row: {
-    id: string;
-    fullname: string;
-    date: string;
+    id: number;
+    id_packet: number;
+    packet_name: string;
     status: string;
+    entry_date: string;
+    exit_date: string;
   };
   selected: boolean;
   onSelectRow: () => void;
   onViewDetail: () => void;
 }
+
+const toTitleCase = (str: string): string =>
+  str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -23,24 +34,25 @@ const formatDate = (dateString: string) => {
     minute: '2-digit',
     hour12: false,
   };
-  return date.toLocaleString('id-ID', options); // Menggunakan format lokal Indonesia
+  return date.toLocaleString('id-ID', options);
 };
 
-export const AttendanceTableRow: React.FC<AttendanceTableRowProps> = ({
+export const HistoryTableRow: React.FC<HistoryTableRowProps> = ({
   row,
   selected,
   onSelectRow,
   onViewDetail,
 }) => (
-    <TableRow hover role="checkbox" selected={selected}>
-      <TableCell padding="checkbox">
-        <Checkbox checked={selected} onChange={onSelectRow} />
-      </TableCell>
-      <TableCell>{row.fullname}</TableCell>
-      <TableCell>{formatDate(row.date)}</TableCell>
-      <TableCell>{row.status}</TableCell>
-      <TableCell>
-        <Button onClick={onViewDetail}>Detail</Button>
-      </TableCell>
-    </TableRow>
-  );
+  <TableRow hover role="checkbox" selected={selected}>
+    <TableCell padding="checkbox">
+      <Checkbox checked={selected} onChange={onSelectRow} />
+    </TableCell>
+    <TableCell>{toTitleCase(row.packet_name)}</TableCell>
+    <TableCell>{formatDate(row.entry_date)}</TableCell>
+    <TableCell>{formatDate(row.entry_date)}</TableCell>
+    <TableCell>{toTitleCase(row.status)}</TableCell>
+    <TableCell>
+      <Button onClick={onViewDetail}>Detail</Button>
+    </TableCell>
+  </TableRow>
+);

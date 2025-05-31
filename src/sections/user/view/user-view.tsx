@@ -319,7 +319,7 @@ export function UserView() {
 // Hook useTable
 export function useTable() {
   const [page, setPage] = useState(0);
-  const [orderBy, setOrderBy] = useState('fullname');
+  const [orderBy, setOrderBy] = useState('full_name');
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selected, setSelected] = useState<string[]>([]);
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
