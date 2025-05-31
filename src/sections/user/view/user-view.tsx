@@ -38,6 +38,9 @@ export function UserView() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ full_name: '', email: '', password: '' });
+
   const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') return;
     setSnackbarOpen(false);
@@ -47,6 +50,31 @@ export function UserView() {
     if (!dateString) return 'Tanggal tidak tersedia';
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('id-ID', options);
+  };
+
+  const handleOpenAddDialog = () => {
+  setNewUser({ full_name: '', email: '', password: '' });
+  setOpenAddDialog(true);
+};
+
+  const handleCloseAddDialog = () => {
+    setOpenAddDialog(false);
+  };
+
+  const handleAddUser = async () => {
+    try {
+      const response = await api.post('/users', newUser);
+      setUsers((prevUsers) => [...prevUsers, response.data.data]); // Asumsikan response.data.data adalah user baru
+      handleCloseAddDialog();
+      setSnackbarMessage('Pengguna berhasil ditambahkan.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Gagal menambahkan pengguna:', error);
+      setSnackbarMessage('Gagal menambahkan pengguna.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   };
 
   useEffect(() => {
@@ -60,6 +88,7 @@ export function UserView() {
     };
     fetchUsers();
   }, []);
+
 
   const handleOpenDeleteDialog = () => {
     setOpenDeleteDialog(true);
@@ -107,10 +136,13 @@ export function UserView() {
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" mb={5}>
-        <Typography variant="h4" flexGrow={1}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={5} px={2}>
+        <Typography variant="h4">
           Pengguna
         </Typography>
+        <Button variant="contained" onClick={handleOpenAddDialog} sx={{ height: 40 }}>
+          Tambah Pengguna
+        </Button>
       </Box>
 
       <Card>
@@ -201,6 +233,45 @@ export function UserView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog Tambah Pengguna */}
+      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+        <DialogContent dividers>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <input
+              type="text"
+              placeholder="Nama Lengkap"
+              value={newUser.full_name}
+              onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={newUser.email}
+              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={newUser.password}
+              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAddDialog} color="inherit">
+            Batal
+          </Button>
+          <Button onClick={handleAddUser} variant="contained">
+            Simpan
+          </Button>
+        </DialogActions>
+      </Dialog>
+
 
       {/* Detail Dialog */}
       {selectedUser && (

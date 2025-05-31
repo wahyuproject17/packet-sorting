@@ -19,7 +19,7 @@ export const AttendanceTableToolbar: React.FC<AttendanceTableToolbarProps> = ({
         </Typography>
       ) : (
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Presensi
+          Riwayat Paket
         </Typography>
       )}
       <TextField

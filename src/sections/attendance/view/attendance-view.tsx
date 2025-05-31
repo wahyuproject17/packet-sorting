@@ -11,6 +11,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Avatar from '@mui/material/Avatar';
 
 import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
@@ -20,29 +21,27 @@ import { TableEmptyRows } from '../table-empty-rows';
 import { AttendanceTableToolbar } from '../attendance-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
-import api from '../../../services/api'; // Import API
+import api from '../../../services/api';
 
-// Format tanggal untuk Indonesia
 const formatDate = (dateString: string): string => {
-  const options: Intl.DateTimeFormatOptions = { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric', 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    hour12: false // Menggunakan format 24 jam
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
   };
   return new Date(dateString).toLocaleString('id-ID', options);
 };
 
-
-// Tipe data untuk presensi
 interface Attendance {
   id: string;
-  fullname: string;
-  date: string;
+  userId: string;
+  packetId: string;
   status: string;
-  information: string;
+  courier_photo?: string;
+  createdAt: string;
 }
 
 export function AttendanceView() {
@@ -52,14 +51,13 @@ export function AttendanceView() {
   const [filterName, setFilterName] = useState<string>('');
   const [selectedAttendance, setSelectedAttendance] = useState<Attendance | null>(null);
 
-  // Fetch attendances from API
   useEffect(() => {
     const fetchAttendances = async () => {
       try {
-        const response = await api.get('/presence'); // Sesuaikan endpoint API jika perlu
-        setAttendances(response.data);
+        const response = await api.get('/history');
+        setAttendances(response.data.histories);
       } catch (error) {
-        console.error('Error fetching attendances:', error);
+        console.error('Error fetching data:', error);
       }
     };
     fetchAttendances();
@@ -73,7 +71,6 @@ export function AttendanceView() {
 
   const notFound = !dataFiltered.length && !!filterName;
 
-  // Handle attendance detail view
   const handleViewDetail = (attendance: Attendance) => {
     setSelectedAttendance(attendance);
   };
@@ -103,16 +100,17 @@ export function AttendanceView() {
                 rowCount={attendances.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
-                onSelectAllRows={(checked: boolean) => // Menambahkan tipe boolean
+                onSelectAllRows={(checked: boolean) =>
                   table.onSelectAllRows(
                     checked,
                     attendances.map((attendance) => attendance.id)
                   )
                 }
                 headLabel={[
-                  { id: 'fullname', label: 'Full Name' },
-                  { id: 'date', label: 'Attendance Date' },
+                  { id: 'userId', label: 'User ID' },
+                  { id: 'packetId', label: 'Packet ID' },
                   { id: 'status', label: 'Status' },
+                  { id: 'createdAt', label: 'Tanggal' },
                   { id: '', label: '' },
                 ]}
               />
@@ -128,7 +126,7 @@ export function AttendanceView() {
                       row={row}
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
-                      onViewDetail={() => handleViewDetail(row)} // View detail button
+                      onViewDetail={() => handleViewDetail(row)}
                     />
                   ))}
 
@@ -154,23 +152,33 @@ export function AttendanceView() {
         />
       </Card>
 
-      {/* Detail Dialog */}
       {selectedAttendance && (
         <Dialog open={!!selectedAttendance} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
-          <DialogTitle>Attendance Details</DialogTitle>
+          <DialogTitle>Detail Presensi</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body1">
-              <strong>Full Name:</strong> {selectedAttendance.fullname}
+              <strong>User ID:</strong> {selectedAttendance.userId}
             </Typography>
             <Typography variant="body1">
-              <strong>Attendance Date:</strong> {formatDate(selectedAttendance.date)}
+              <strong>Packet ID:</strong> {selectedAttendance.packetId}
             </Typography>
             <Typography variant="body1">
               <strong>Status:</strong> {selectedAttendance.status}
             </Typography>
             <Typography variant="body1">
-              <strong>Alasan:</strong> {selectedAttendance.information}
+              <strong>Tanggal:</strong> {formatDate(selectedAttendance.createdAt)}
             </Typography>
+            {selectedAttendance.courier_photo && (
+              <Box mt={2}>
+                <Typography variant="body1"><strong>Foto Kurir:</strong></Typography>
+                <Avatar
+                  alt="Courier"
+                  src={selectedAttendance.courier_photo}
+                  sx={{ width: 100, height: 100 }}
+                  variant="rounded"
+                />
+              </Box>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDetail} color="primary">
@@ -183,10 +191,9 @@ export function AttendanceView() {
   );
 }
 
-// Hook to manage table state
 export function useTable() {
   const [page, setPage] = useState(0);
-  const [orderBy, setOrderBy] = useState<string>('fullname');
+  const [orderBy, setOrderBy] = useState<string>('userId');
   const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [selected, setSelected] = useState<string[]>([]);
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
@@ -201,11 +208,7 @@ export function useTable() {
   );
 
   const onSelectAllRows = useCallback((checked: boolean, newSelecteds: string[]) => {
-    if (checked) {
-      setSelected(newSelecteds);
-      return;
-    }
-    setSelected([]);
+    setSelected(checked ? newSelecteds : []);
   }, []);
 
   const onSelectRow = useCallback(
@@ -213,7 +216,6 @@ export function useTable() {
       const newSelected = selected.includes(inputValue)
         ? selected.filter((value) => value !== inputValue)
         : [...selected, inputValue];
-
       setSelected(newSelected);
     },
     [selected]

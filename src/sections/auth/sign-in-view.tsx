@@ -32,7 +32,11 @@ export function SignInView() {
 
       if (token) {
         // Simpan token dan data pengguna di localStorage
-        localStorage.setItem('user', JSON.stringify({ token, user }));
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('email', user.email);
+        localStorage.setItem('full_name', user.full_name);
+
 
         // Redirect ke dashboard
         router.push('/');

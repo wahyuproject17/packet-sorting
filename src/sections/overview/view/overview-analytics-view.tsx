@@ -89,7 +89,7 @@ export function AttendanceAnalyticsView() {
 ) {
     setSelectedBoxId(box.id);
     setOpenDialog(true);
-  } else if (box.status === 'terisi') {
+  } else if (box.status === 'terisi' || 'dalam pengiriman') {
     setDetailData(box);
     setDetailDialogOpen(true);
   }
@@ -103,7 +103,7 @@ export function AttendanceAnalyticsView() {
         packet_name: packetName,
         packet_key: packetKey,
         user_key: userKey,
-        status: "terisi"
+        status: "dalam pengiriman"
       });
       setOpenDialog(false);
       setPacketName('');
@@ -118,7 +118,7 @@ export function AttendanceAnalyticsView() {
   return (
     <DashboardContent maxWidth="xl">
       <Typography variant="h4" sx={{ mb: { xs: 3, md: 5 } }}>
-        Hi, Welcome back 👋
+        Hai, Selamat datang 👋
       </Typography>
 
       {loading ? (
@@ -133,11 +133,10 @@ export function AttendanceAnalyticsView() {
               >
                 <AnalyticsWidgetSummary
                   title={`Smart Box ${box.id}`}
-                  percent={0}
                   total={box.status === 'terisi' ? 1 : 0}
                   color={statusColor(box.status)}
                   icon={<img alt="box" src="/assets/icons/glass/ic-box.svg" />}
-                  chart={{ categories: [], series: [] }}
+                  status={box.status}
                 />
               </Box>
             </Grid>
