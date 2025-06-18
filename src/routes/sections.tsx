@@ -11,10 +11,11 @@ import { ProtectedRoute } from './protected-route';
 
 // Halaman yang menggunakan lazy loading
 const HomePage = lazy(() => import('src/pages/home'));
-const BlogPage = lazy(() => import('src/pages/blog'));
+const BlogPage = lazy(() => import('src/pages/packet'));
+const PacketPage = lazy(() => import('src/pages/packet'));
 const UserPage = lazy(() => import('src/pages/user'));
 const SignInPage = lazy(() => import('src/pages/sign-in'));
-const AttendancePage = lazy(() => import('src/pages/attendance'));
+const AttendancePage = lazy(() => import('src/pages/history'));
 const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 // Komponen fallback untuk suspense
@@ -50,6 +51,14 @@ export function Router() {
             </ProtectedRoute>
           ),
           index: true,
+        },
+        {
+          path: 'packet',
+          element: (
+            <ProtectedRoute>
+              <PacketPage />
+            </ProtectedRoute>
+          ),
         },
         {
           path: 'user',

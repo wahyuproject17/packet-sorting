@@ -3,117 +3,52 @@ import Grid from '@mui/material/Unstable_Grid2';
 import Typography from '@mui/material/Typography';
 import {
   Box,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField
+  Card,
+  CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  Divider
 } from '@mui/material';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
 import api from '../../../services/api';
 
-interface SmartBoxData {
+// Tipe data paket terbaru
+interface RecentPacket {
   id: number;
+  packet_name: string;
+  receipt_number: string;
+  destination: string;
   status: string;
-  packet_key?: string;
-  user_key?: string;
-  packet_name?:string;
+  createdAt: string;
 }
 
 export function AttendanceAnalyticsView() {
-  const TOTAL_BOXES = 3;
-
-  const [smartBoxes, setSmartBoxes] = useState<SmartBoxData[]>([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
-  const [packetName, setPacketName] = useState('');
-  const [packetKey, setPacketKey] = useState('');
-  const [userKey, setUserKey] = useState('');
+  const [totalPackets, setTotalPackets] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [recentPackets, setRecentPackets] = useState<RecentPacket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [detailData, setDetailData] = useState<SmartBoxData | null>(null);
 
-  const fetchSmartBoxData = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await api.get('/packet');
-      const data = response.data.packets;
+      const response = await api.get('/dashboard');
+      const data = response.data?.data;
 
-      // Pastikan tetap ada 3 box
-      const completeBoxes: SmartBoxData[] = [];
-      for (let i = 1; i <= TOTAL_BOXES; i += 1) {
-        const existing = data.find((packet: any) => packet.id === i);
-        if (existing) {
-          completeBoxes.push({
-            id: i,
-            status: existing.status,
-            packet_name: existing.packet_name,
-            packet_key: existing.packet_key,
-            user_key: existing.user_key,
-          });
-        } else {
-          completeBoxes.push({ id: i, status: 'kosong' });
-        }
-
-      }
-
-      setSmartBoxes(completeBoxes);
+      setTotalPackets(data.totalPackets);
+      setTotalUsers(data.totalUsers);
+      setRecentPackets(data.recentPackets);
     } catch (error) {
-      console.error('Error fetching SmartBox data:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSmartBoxData();
+    fetchDashboardData();
   }, []);
-
-  const statusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'terisi':
-        return 'success';
-      case 'kosong':
-        return 'error';
-      default:
-        return 'warning';
-    }
-  };
-
-  const handleBoxClick = (box: SmartBoxData) => {
-  if (
-  (!box.status || box.status.toLowerCase() === 'kosong') &&
-  (!box.packet_key || !box.user_key)
-) {
-    setSelectedBoxId(box.id);
-    setOpenDialog(true);
-  } else if (box.status === 'terisi' || 'dalam pengiriman') {
-    setDetailData(box);
-    setDetailDialogOpen(true);
-  }
-};
-
-
-  const handleSubmit = async () => {
-    try {
-      await api.put(`/packet/${selectedBoxId}`, {
-        box_id: selectedBoxId,
-        packet_name: packetName,
-        packet_key: packetKey,
-        user_key: userKey,
-        status: "dalam pengiriman"
-      });
-      setOpenDialog(false);
-      setPacketName('');
-      setPacketKey('');
-      setUserKey('');
-      await fetchSmartBoxData(); // refresh data
-    } catch (error) {
-      console.error('Failed to update SmartBox:', error);
-    }
-  };
 
   return (
     <DashboardContent maxWidth="xl">
@@ -122,74 +57,54 @@ export function AttendanceAnalyticsView() {
       </Typography>
 
       {loading ? (
-        <Typography>Loading SmartBoxes...</Typography>
+        <Typography>Loading data dashboard...</Typography>
       ) : (
-        <Grid container spacing={3}>
-          {smartBoxes.map((box) => (
-            <Grid key={box.id} xs={12} sm={6} md={4}>
-              <Box
-                onClick={() => handleBoxClick(box)}
-                sx={{ cursor: box.status === 'kosong' ? 'pointer' : 'default' }}
-              >
-                <AnalyticsWidgetSummary
-                  title={`Smart Box ${box.id}`}
-                  total={box.status === 'terisi' ? 1 : 0}
-                  color={statusColor(box.status)}
-                  icon={<img alt="box" src="/assets/icons/glass/ic-box.svg" />}
-                  status={box.status}
-                />
-              </Box>
+        <>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid xs={12} sm={6} md={4}>
+              <AnalyticsWidgetSummary
+                title="Total Paket"
+                total={totalPackets}
+                color="info"
+                icon={<img alt="icon" src="/assets/icons/glass/ic-box.svg" />}
+              />
             </Grid>
-          ))}
-        </Grid>
+            <Grid xs={12} sm={6} md={4}>
+              <AnalyticsWidgetSummary
+                title="Total Pengguna"
+                total={totalUsers}
+                color="success"
+                icon={<img alt="icon" src="/assets/icons/glass/ic-glass-users.svg" />}
+              />
+            </Grid>
+          </Grid>
+
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Paket Terbaru
+              </Typography>
+              <List>
+                {recentPackets.length === 0 ? (
+                  <Typography>Tidak ada paket terbaru.</Typography>
+                ) : (
+                  recentPackets.map((packet) => (
+                    <Box key={packet.id}>
+                      <ListItem>
+                        <ListItemText
+                          primary={packet.packet_name}
+                          secondary={`Tujuan: ${packet.destination} | Status: ${packet.status}`}
+                        />
+                      </ListItem>
+                      <Divider />
+                    </Box>
+                  ))
+                )}
+              </List>
+            </CardContent>
+          </Card>
+        </>
       )}
-
-      <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth="xs" fullWidth>
-      <DialogTitle>Detail Box</DialogTitle>
-      <DialogContent dividers>
-        <Typography variant="subtitle1"><strong>ID Box:</strong> {detailData?.id}</Typography>
-        <Typography variant="subtitle1"><strong>Nama Paket:</strong> {detailData?.packet_name || '-'}</Typography>
-        <Typography variant="subtitle1"><strong>Status:</strong> {detailData?.status}</Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setDetailDialogOpen(false)}>Tutup</Button>
-      </DialogActions>
-    </Dialog>
-
-
-      {/* Dialog Form */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Isi Data SmartBox {selectedBoxId}</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Nama Paket"
-            fullWidth
-            value={packetName}
-            onChange={(e) => setPacketName(e.target.value)}
-            margin="normal"
-          />
-          <TextField
-            label="Packet Key"
-            fullWidth
-            value={packetKey}
-            onChange={(e) => setPacketKey(e.target.value)}
-            margin="normal"
-          />
-          <TextField
-            label="User Key"
-            fullWidth
-            value={userKey}
-            onChange={(e) => setUserKey(e.target.value)}
-            margin="normal"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            Simpan
-          </Button>
-        </DialogActions>
-      </Dialog>
     </DashboardContent>
   );
 }

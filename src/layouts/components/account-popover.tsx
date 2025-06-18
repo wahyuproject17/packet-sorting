@@ -64,6 +64,7 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     router.push('/sign-in');
   }, [router]);
 

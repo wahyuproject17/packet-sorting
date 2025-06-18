@@ -1,15 +1,9 @@
 import React from 'react';
 import { TableRow, TableCell, Checkbox, Button } from '@mui/material';
+import { HistoryProps } from './types';
 
 interface HistoryTableRowProps {
-  row: {
-    id: number;
-    id_packet: number;
-    packet_name: string;
-    status: string;
-    entry_date: string;
-    exit_date: string;
-  };
+  row: HistoryProps;
   selected: boolean;
   onSelectRow: () => void;
   onViewDetail: () => void;
@@ -47,9 +41,10 @@ export const HistoryTableRow: React.FC<HistoryTableRowProps> = ({
     <TableCell padding="checkbox">
       <Checkbox checked={selected} onChange={onSelectRow} />
     </TableCell>
+    <TableCell>{row.packet?.receipt_number || '-'}</TableCell>
     <TableCell>{toTitleCase(row.packet_name)}</TableCell>
-    <TableCell>{formatDate(row.entry_date)}</TableCell>
-    <TableCell>{formatDate(row.entry_date)}</TableCell>
+    <TableCell>{toTitleCase(row.packet?.destination || '-')}</TableCell>
+    <TableCell>{formatDate(row.createdAt)}</TableCell>
     <TableCell>{toTitleCase(row.status)}</TableCell>
     <TableCell>
       <Button onClick={onViewDetail}>Detail</Button>

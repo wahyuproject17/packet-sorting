@@ -7,10 +7,6 @@ export interface History {
   id_packet: number;
   packet_name: string;
   status: string;
-  entry_date: string;
-  exit_date: string;
-  courier_photo?: string | null;
-  user_photo?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,7 +65,7 @@ export function applyHistoryFilter({
   if (filterName) {
     const lowerFilter = filterName.toLowerCase();
     filtered = filtered.filter((item) =>
-      `${item.id_packet} ${item.entry_date} ${item.exit_date}`
+      `${item.id_packet} ${item.createdAt} ${item.packet_name} ${item.status}`
         .toLowerCase()
         .includes(lowerFilter)
     );

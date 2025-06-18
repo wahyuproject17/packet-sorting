@@ -47,7 +47,11 @@ export function SignInView() {
       }
     } catch (error) {
       console.error('Error during login:', error);
-      alert('Terjadi kesalahan saat login. Silakan coba lagi.'); // Tampilkan pesan kesalahan
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message); // Tampilkan pesan dari server
+      } else {
+        alert('Terjadi kesalahan saat login. Silakan coba lagi.'); // Fallback jika tidak ada pesan
+      }
     } finally {
       setLoading(false);
     }

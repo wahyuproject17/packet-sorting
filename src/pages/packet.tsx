@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 
 import { CONFIG } from 'src/config-global';
 
-import { AttendanceView } from 'src/sections/attendance/view';
+import { PacketView } from 'src/sections/packet/view';
 
 // ----------------------------------------------------------------------
 
@@ -10,10 +10,10 @@ export default function Page() {
   return (
     <>
       <Helmet>
-        <title> {`History - ${CONFIG.appName}`}</title>
+        <title> {`Packet - ${CONFIG.appName}`}</title>
       </Helmet>
 
-      <AttendanceView />
+      <PacketView />
     </>
   );
 }

@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import React, { ReactNode } from 'react';
 
 // Fungsi untuk mengecek apakah user sudah login
-const isAuthenticated = (): boolean =>!!localStorage.getItem('user');
+const isAuthenticated = (): boolean =>!!localStorage.getItem('token');
 
 // Tipe untuk props yang diterima oleh ProtectedRoute
 interface ProtectedRouteProps {

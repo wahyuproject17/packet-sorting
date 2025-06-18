@@ -15,11 +15,12 @@ import Avatar from '@mui/material/Avatar';
 
 import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
-import { HistoryTableRow } from '../attendance-table-row';
-import { AttendanceTableHead } from '../attendance-table-head';
+import { HistoryTableRow } from '../history-table-row';
+import { AttendanceTableHead } from '../history-table-head';
 import { TableEmptyRows } from '../table-empty-rows';
-import { AttendanceTableToolbar } from '../attendance-table-toolbar';
+import { AttendanceTableToolbar } from '../history-table-toolbar';
 import { emptyRows, applyHistoryFilter, getComparator } from '../utils';
+import { HistoryProps} from '../types';
 
 import api from '../../../services/api';
 
@@ -35,40 +36,27 @@ const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleString('id-ID', options);
 };
 
-interface Attendance {
-  id: number;
-  id_packet: number;
-  packet_name: string;
-  status: string;
-  entry_date: string;
-  exit_date: string;
-  courier_photo?: string | null;
-  user_photo?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function AttendanceView() {
   const table = useTable();
 
-  const [attendances, setAttendances] = useState<Attendance[]>([]);
+  const [histories, setHistories] = useState<HistoryProps[]>([]);
   const [filterName, setFilterName] = useState<string>('');
-  const [selectedAttendance, setSelectedAttendance] = useState<Attendance | null>(null);
+  const [selectedHistory, setselectedHistory] = useState<HistoryProps | null>(null);
 
   useEffect(() => {
-    const fetchAttendances = async () => {
+    const fetchhistories = async () => {
       try {
         const response = await api.get('/history');
-        setAttendances(response.data.histories);
+        setHistories(response.data.histories as HistoryProps[]);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
-    fetchAttendances();
+    fetchhistories();
   }, []);
 
   const dataFiltered = applyHistoryFilter({
-    inputData: attendances,
+    inputData: histories,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
@@ -82,12 +70,12 @@ export function AttendanceView() {
 
   const notFound = !dataFiltered.length && !!filterName;
 
-  const handleViewDetail = (attendance: Attendance) => {
-    setSelectedAttendance(attendance);
+  const handleViewDetail = (history: HistoryProps) => {
+    setselectedHistory(history);
   };
 
   const handleCloseDetail = () => {
-    setSelectedAttendance(null);
+    setselectedHistory(null);
   };
 
   // --- FUNGSI DELETE SELECTED ---
@@ -104,7 +92,7 @@ export function AttendanceView() {
       );
 
       // Update state, buang data yg sudah dihapus
-      setAttendances((prev) =>
+      setHistories((prev) =>
         prev.filter((item) => !table.selected.includes(String(item.id)))
       );
 
@@ -134,19 +122,20 @@ export function AttendanceView() {
               <AttendanceTableHead
                 order={table.order}
                 orderBy={table.orderBy}
-                rowCount={attendances.length}
+                rowCount={histories.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
                 onSelectAllRows={(checked: boolean) =>
                   table.onSelectAllRows(
                     checked,
-                    attendances.map((attendance) => String(attendance.id))
+                    histories.map((history) => String(history.id))
                   )
                 }
                 headLabel={[
+                  { id: 'receipt_number', label: 'Nomor Resi' },
                   { id: 'packet_name', label: 'Nama Paket' },
-                  { id: 'entry_date', label: 'Waktu Masuk' },
-                  { id: 'exit_date', label: 'Waktu Keluar' },
+                  { id: 'destination', label: 'Tujuan' },
+                  { id: 'updatedAt', label: 'Waktu Proses' },
                   { id: 'status', label: 'Status' },
                   { id: '', label: '' },
                 ]}
@@ -169,7 +158,7 @@ export function AttendanceView() {
 
                 <TableEmptyRows
                   height={68}
-                  emptyRows={emptyRows(table.page, table.rowsPerPage, attendances.length)}
+                  emptyRows={emptyRows(table.page, table.rowsPerPage, histories.length)}
                 />
 
                 {notFound && <TableNoData searchQuery={filterName} />}
@@ -181,7 +170,7 @@ export function AttendanceView() {
         <TablePagination
           component="div"
           page={table.page}
-          count={attendances.length}
+          count={histories.length}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           rowsPerPageOptions={[5, 10, 25]}
@@ -189,44 +178,25 @@ export function AttendanceView() {
         />
       </Card>
 
-      {selectedAttendance && (
-        <Dialog open={!!selectedAttendance} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
+      {selectedHistory && (
+        <Dialog open={!!selectedHistory} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
           <DialogTitle>Detail Histori</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body1">
-              <strong>Nama Paket:</strong> {toTitleCase(selectedAttendance.packet_name)}
+              <strong>Nama Paket:</strong> {toTitleCase(selectedHistory.packet_name)}
             </Typography>
             <Typography variant="body1">
-              <strong>Waktu Masuk:</strong> {formatDate(selectedAttendance.entry_date)}
+              <strong>Waktu Proses:</strong> {toTitleCase(formatDate(selectedHistory.updatedAt))}
             </Typography>
             <Typography variant="body1">
-              <strong>Waktu Keluar:</strong> {formatDate(selectedAttendance.exit_date)}
+              <strong>Nomor Resi:</strong> {selectedHistory.packet?.receipt_number || 'Tidak ada'}
             </Typography>
             <Typography variant="body1">
-              <strong>Status:</strong> {toTitleCase(selectedAttendance.status)}
+              <strong>Tujuan:</strong> {selectedHistory.packet?.destination || 'Tidak ada'}
             </Typography>
-            {selectedAttendance.courier_photo && (
-              <Box mt={2}>
-                <Typography variant="body1"><strong>Foto Kurir:</strong></Typography>
-                <Avatar
-                  alt="Courier"
-                  src={selectedAttendance.courier_photo}
-                  sx={{ width: 100, height: 100 }}
-                  variant="rounded"
-                />
-              </Box>
-            )}
-            {selectedAttendance.user_photo && (
-              <Box mt={2}>
-                <Typography variant="body1"><strong>Foto User:</strong></Typography>
-                <Avatar
-                  alt="User"
-                  src={selectedAttendance.user_photo}
-                  sx={{ width: 100, height: 100 }}
-                  variant="rounded"
-                />
-              </Box>
-            )}
+            <Typography variant="body1">
+              <strong>Status:</strong> {toTitleCase(selectedHistory.status)}
+            </Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDetail} color="primary">

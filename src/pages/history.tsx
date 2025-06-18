@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 
 import { CONFIG } from 'src/config-global';
 
-import { BlogView } from 'src/sections/blog/view';
+import { AttendanceView } from 'src/sections/history/view';
 
 // ----------------------------------------------------------------------
 
@@ -10,10 +10,10 @@ export default function Page() {
   return (
     <>
       <Helmet>
-        <title> {`Blog - ${CONFIG.appName}`}</title>
+        <title> {`History - ${CONFIG.appName}`}</title>
       </Helmet>
 
-      <BlogView />
+      <AttendanceView />
     </>
   );
 }

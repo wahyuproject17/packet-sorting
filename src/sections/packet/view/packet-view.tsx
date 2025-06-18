@@ -16,21 +16,21 @@ import MuiAlert from '@mui/material/Alert';
 
 import { Scrollbar } from 'src/components/scrollbar';
 import { TableNoData } from '../table-no-data';
-import { UserTableRow } from '../user-table-row';
-import { UserTableHead } from '../user-table-head';
+import { UserTableRow } from '../packet-table-row';
+import { UserTableHead } from '../packet-table-head';
 import { TableEmptyRows } from '../table-empty-rows';
-import { UserTableToolbar } from '../user-table-toolbar';
+import { UserTableToolbar } from '../packet-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
 import api from '../../../services/api'; // Import API
 import { UserProps } from '../types';
 
-export function UserView() {
+export function PacketView() {
   const table = useTable();
 
-  const [users, setUsers] = useState<UserProps[]>([]);
+  const [packet, setPacket] = useState<UserProps[]>([]);
   const [filterName, setFilterName] = useState('');
-  const [selectedUser, setSelectedUser] = useState<UserProps | null>(null);
+  const [selectedPacket, setselectedPacket] = useState<UserProps | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   // Snackbar
@@ -39,7 +39,7 @@ export function UserView() {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ full_name: '', email: '', password: '' });
+  const [newPacket, setnewPacket] = useState({ receipt_number: '', packet_name: '', destination: '' });
 
   const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') return;
@@ -53,7 +53,7 @@ export function UserView() {
   };
 
   const handleOpenAddDialog = () => {
-  setNewUser({ full_name: '', email: '', password: '' });
+  setnewPacket({ receipt_number: '', packet_name: '', destination: '' });
   setOpenAddDialog(true);
 };
 
@@ -61,32 +61,32 @@ export function UserView() {
     setOpenAddDialog(false);
   };
 
-  const handleAddUser = async () => {
+  const handleAddPacket = async () => {
     try {
-      const response = await api.post('/users', newUser);
-      setUsers((prevUsers) => [...prevUsers, response.data.data]); // Asumsikan response.data.data adalah user baru
+      const response = await api.post('/packet', newPacket);
+      setPacket((prevpacket) => [...prevpacket, response.data.data]);
       handleCloseAddDialog();
-      setSnackbarMessage('Pengguna berhasil ditambahkan.');
+      setSnackbarMessage('Paket berhasil ditambahkan.');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Gagal menambahkan pengguna:', error);
-      setSnackbarMessage('Gagal menambahkan pengguna.');
+      console.error('Gagal menambahkan paket:', error);
+      setSnackbarMessage('Gagal menambahkan paket.');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
   };
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchpacket = async () => {
       try {
-        const response = await api.get('/users');
-        setUsers(response.data.data.users);
+        const response = await api.get('/packet');
+        setPacket(response.data.packets);
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error('Error fetching packet:', error);
       }
     };
-    fetchUsers();
+    fetchpacket();
   }, []);
 
 
@@ -101,25 +101,25 @@ export function UserView() {
   const handleDeleteSelected = async () => {
     try {
       await Promise.all(
-        table.selected.map((userId) => api.delete(`/users/${userId}`))
+        table.selected.map((userId) => api.delete(`/packet/${userId}`))
       );
-      const updatedUsers = users.filter((user) => !table.selected.includes(user.id));
-      setUsers(updatedUsers);
+      const updatedpacket = packet.filter((user) => !table.selected.includes(user.id));
+      setPacket(updatedpacket);
       table.onSelectAllRows(false, []);
       handleCloseDeleteDialog();
-      setSnackbarMessage('Berhasil menghapus pengguna yang dipilih.');
+      setSnackbarMessage('Berhasil menghapus paket yang dipilih.');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error deleting users:', error);
-      setSnackbarMessage('Gagal menghapus pengguna.');
+      console.error('Error deleting packet:', error);
+      setSnackbarMessage('Gagal menghapus paket.');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
   };
 
   const dataFiltered = applyFilter({
-    inputData: users,
+    inputData: packet,
     comparator: getComparator(table.order, table.orderBy),
     filterName,
   });
@@ -127,21 +127,21 @@ export function UserView() {
   const notFound = !dataFiltered.length && !!filterName;
 
   const handleViewDetail = (user: UserProps) => {
-    setSelectedUser(user);
+    setselectedPacket(user);
   };
 
   const handleCloseDetail = () => {
-    setSelectedUser(null);
+    setselectedPacket(null);
   };
 
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={5} px={2}>
         <Typography variant="h4">
-          Daftar Pengguna
+          Daftar Paket
         </Typography>
         <Button variant="contained" onClick={handleOpenAddDialog} sx={{ height: 40 }}>
-          Tambah Pengguna
+          Tambah Packet
         </Button>
       </Box>
 
@@ -162,19 +162,21 @@ export function UserView() {
               <UserTableHead
                 order={table.order}
                 orderBy={table.orderBy}
-                rowCount={users.length}
+                rowCount={packet.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
                 onSelectAllRows={(checked) =>
                   table.onSelectAllRows(
                     checked,
-                    users.map((user) => user.id)
+                    packet.map((user) => user.id)
                   )
                 }
                 headLabel={[
-                  { id: 'full_name', label: 'Nama Lengkap' },
-                  { id: 'email', label: 'Email' },
+                  { id: 'receipt_number', label: 'Nomor Resi' },
+                  { id: 'packet_name', label: 'Nama Paket' },
+                   { id: 'destination', label: 'Tujuan' },
                   { id: 'createdAt', label: 'Tanggal Pembuatan' },
+                  { id: 'status', label: 'Status' },
                   { id: '' },
                 ]}
               />
@@ -196,7 +198,7 @@ export function UserView() {
 
                 <TableEmptyRows
                   height={68}
-                  emptyRows={emptyRows(table.page, table.rowsPerPage, users.length)}
+                  emptyRows={emptyRows(table.page, table.rowsPerPage, packet.length)}
                 />
 
                 {notFound && <TableNoData searchQuery={filterName} />}
@@ -208,7 +210,7 @@ export function UserView() {
         <TablePagination
           component="div"
           page={table.page}
-          count={users.length}
+          count={packet.length}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           rowsPerPageOptions={[5, 10, 25]}
@@ -221,7 +223,7 @@ export function UserView() {
         <DialogTitle>Konfirmasi Hapus</DialogTitle>
         <DialogContent>
           <Typography>
-            Yakin ingin menghapus {table.selected.length} pengguna terpilih?
+            Yakin ingin menghapus {table.selected.length} item terpilih?
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -236,37 +238,41 @@ export function UserView() {
 
       {/* Dialog Tambah Pengguna */}
       <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+        <DialogTitle>Tambah Paket Baru</DialogTitle>
         <DialogContent dividers>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <input
               type="text"
-              placeholder="Nama Lengkap"
-              value={newUser.full_name}
-              onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+              placeholder="Nomor Resi"
+              value={newPacket.receipt_number}
+              onChange={(e) => setnewPacket({ ...newPacket, receipt_number: e.target.value })}
               style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
             <input
-              type="email"
-              placeholder="Email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              type="text"
+              placeholder="Nama Paket"
+              value={newPacket.packet_name}
+              onChange={(e) => setnewPacket({ ...newPacket, packet_name: e.target.value })}
               style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
-            <input
-              type="password"
-              placeholder="Password"
-              value={newUser.password}
-              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+            <select
+              value={newPacket.destination}
+              onChange={(e) => setnewPacket({ ...newPacket, destination: e.target.value })}
               style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
-            />
+            >
+              <option value="">Pilih tujuan</option>
+              <option value="Bandung">Bandung</option>
+              <option value="Jakarta">Jakarta</option>
+              <option value="Semarang">Semarang</option>
+            </select>
+
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseAddDialog} color="inherit">
             Batal
           </Button>
-          <Button onClick={handleAddUser} variant="contained">
+          <Button onClick={handleAddPacket} variant="contained">
             Simpan
           </Button>
         </DialogActions>
@@ -274,18 +280,24 @@ export function UserView() {
 
 
       {/* Detail Dialog */}
-      {selectedUser && (
-        <Dialog open={!!selectedUser} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
-          <DialogTitle>Detail Pengguna</DialogTitle>
+      {selectedPacket && (
+        <Dialog open={!!selectedPacket} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
+          <DialogTitle>Detail Paket</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body1">
-              <strong>Nama Lengkap:</strong> {selectedUser.full_name}
+              <strong>Nomor Resi:</strong> {selectedPacket.receipt_number}
             </Typography>
             <Typography variant="body1">
-              <strong>Email:</strong> {selectedUser.email}
+              <strong>Nama Paket:</strong> {selectedPacket.packet_name}
             </Typography>
             <Typography variant="body1">
-              <strong>Tanggal Pembuatan:</strong> {formatDate(selectedUser.createdAt)}
+              <strong>Tujuan:</strong> {selectedPacket.destination}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Tanggal Pembuatan:</strong> {formatDate(selectedPacket.createdAt)}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Status:</strong> {selectedPacket.status}
             </Typography>
           </DialogContent>
           <DialogActions>
