@@ -24,7 +24,7 @@ export function ForgotPasswordView() {
       const response = await api.post('/auth/forgot-password', { email });
 
       alert('Link reset password telah dikirim ke email Anda.');
-      router.push('/login');
+      router.push('/sign-in');
     } catch (error) {
       console.error('Error sending forgot password email:', error);
       if (error.response?.data?.message) {

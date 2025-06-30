@@ -43,7 +43,7 @@ export function ResetPasswordView() {
       });
 
       alert('Password berhasil direset. Silakan login kembali.');
-      router.push('/login');
+      router.push('/sign-in');
     } catch (error) {
       console.error('Error resetting password:', error);
       if (error.response?.data?.message) {
