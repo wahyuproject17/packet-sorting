@@ -69,9 +69,15 @@ export function SignInView() {
         sx={{ mb: 3 }}
       />
 
-      <Link variant="body2" color="inherit" sx={{ mb: 1.5 }}>
+      <Link
+        component="button"
+        variant="body2"
+        onClick={() => router.push('/forgot-password')}
+        sx={{ mb: 1.5 }}
+      >
         Forgot password?
       </Link>
+
 
       <TextField
         fullWidth

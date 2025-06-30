@@ -15,6 +15,8 @@ const BlogPage = lazy(() => import('src/pages/packet'));
 const PacketPage = lazy(() => import('src/pages/packet'));
 const UserPage = lazy(() => import('src/pages/user'));
 const SignInPage = lazy(() => import('src/pages/sign-in'));
+const ForgotPasswordPage = lazy(() => import('src/pages/forgot-password'));
+const ResetPasswordPage = lazy(() => import('src/pages/reset-password'));
 const AttendancePage = lazy(() => import('src/pages/history'));
 const Page404 = lazy(() => import('src/pages/page-not-found'));
 
@@ -84,6 +86,22 @@ export function Router() {
       element: (
         <AuthLayout>
           <SignInPage />
+        </AuthLayout>
+      ),
+    },
+    {
+      path: 'forgot-password',
+      element: (
+        <AuthLayout>
+          <ForgotPasswordPage />
+        </AuthLayout>
+      ),
+    },
+    {
+      path: 'reset-password',
+      element: (
+        <AuthLayout>
+          <ResetPasswordPage />
         </AuthLayout>
       ),
     },
