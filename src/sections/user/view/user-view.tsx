@@ -22,7 +22,7 @@ import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../user-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
-import api from '../../../services/api'; // Import API
+import api from '../../../services/api';
 import { UserProps } from '../types';
 
 export function UserView() {
@@ -32,39 +32,50 @@ export function UserView() {
   const [filterName, setFilterName] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProps | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ full_name: '', email: '', password: '' });
+  const [editUser, setEditUser] = useState<UserProps | null>(null);
 
-  // Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [newUser, setNewUser] = useState({ full_name: '', email: '', password: '' });
-
-  const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-    if (reason === 'clickaway') return;
-    setSnackbarOpen(false);
-  };
+  const handleSnackbarClose = () => setSnackbarOpen(false);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Tanggal tidak tersedia';
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('id-ID', options);
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users');
+      setUsers(response.data.data.users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleOpenAddDialog = () => {
-  setNewUser({ full_name: '', email: '', password: '' });
-  setOpenAddDialog(true);
-};
-
-  const handleCloseAddDialog = () => {
-    setOpenAddDialog(false);
+    setNewUser({ full_name: '', email: '', password: '' });
+    setOpenAddDialog(true);
   };
+
+  const handleCloseAddDialog = () => setOpenAddDialog(false);
 
   const handleAddUser = async () => {
     try {
       const response = await api.post('/users', newUser);
-      setUsers((prevUsers) => [...prevUsers, response.data.data]); // Asumsikan response.data.data adalah user baru
+      setUsers((prev) => [...prev, response.data.data]);
       handleCloseAddDialog();
       setSnackbarMessage('Pengguna berhasil ditambahkan.');
       setSnackbarSeverity('success');
@@ -77,46 +88,52 @@ export function UserView() {
     }
   };
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await api.get('/users');
-        setUsers(response.data.data.users);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
-
-  const handleOpenDeleteDialog = () => {
-    setOpenDeleteDialog(true);
+  const handleOpenEditDialog = (user: UserProps) => {
+    setEditUser(user);
+    setOpenEditDialog(true);
   };
 
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false);
+  const handleCloseEditDialog = () => {
+    setEditUser(null);
+    setOpenEditDialog(false);
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser) return;
+    try {
+      const response = await api.put(`/users/${editUser.id}`, editUser);
+      setUsers((prev) => prev.map((u) => (u.id === editUser.id ? response.data.data : u)));
+      handleCloseEditDialog();
+      setSnackbarMessage('Pengguna berhasil diperbarui.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Gagal memperbarui pengguna:', error);
+      setSnackbarMessage('Gagal memperbarui pengguna.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   };
 
   const handleDeleteSelected = async () => {
     try {
-      await Promise.all(
-        table.selected.map((userId) => api.delete(`/users/${userId}`))
-      );
-      const updatedUsers = users.filter((user) => !table.selected.includes(user.id));
-      setUsers(updatedUsers);
+      await Promise.all(table.selected.map((id) => api.delete(`/users/${id}`)));
+      setUsers((prev) => prev.filter((user) => !table.selected.includes(user.id)));
       table.onSelectAllRows(false, []);
-      handleCloseDeleteDialog();
-      setSnackbarMessage('Berhasil menghapus pengguna yang dipilih.');
+      setOpenDeleteDialog(false);
+      setSnackbarMessage('Pengguna berhasil dihapus.');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Error deleting users:', error);
+      console.error('Gagal menghapus pengguna:', error);
       setSnackbarMessage('Gagal menghapus pengguna.');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
   };
+
+  const handleViewDetail = (user: UserProps) => setSelectedUser(user);
+  const handleCloseDetail = () => setSelectedUser(null);
 
   const dataFiltered = applyFilter({
     inputData: users,
@@ -126,38 +143,27 @@ export function UserView() {
 
   const notFound = !dataFiltered.length && !!filterName;
 
-  const handleViewDetail = (user: UserProps) => {
-    setSelectedUser(user);
-  };
-
-  const handleCloseDetail = () => {
-    setSelectedUser(null);
-  };
-
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={5} px={2}>
-        <Typography variant="h4">
-          Daftar Pengguna
-        </Typography>
-        <Button variant="contained" onClick={handleOpenAddDialog} sx={{ height: 40 }}>
-          Tambah Pengguna
-        </Button>
+      {/* Toolbar */}
+      <Box display="flex" justifyContent="space-between" mb={5} px={2}>
+        <Typography variant="h4">Daftar Pengguna</Typography>
+        <Button variant="contained" onClick={handleOpenAddDialog}>Tambah Pengguna</Button>
       </Box>
 
       <Card>
         <UserTableToolbar
           numSelected={table.selected.length}
           filterName={filterName}
-          onFilterName={(event) => {
-            setFilterName(event.target.value);
+          onFilterName={(e) => {
+            setFilterName(e.target.value);
             table.onResetPage();
           }}
-          onDeleteSelected={handleOpenDeleteDialog}
+          onDeleteSelected={() => setOpenDeleteDialog(true)}
         />
 
         <Scrollbar>
-          <TableContainer sx={{ overflow: 'unset' }}>
+          <TableContainer>
             <Table sx={{ minWidth: 800 }}>
               <UserTableHead
                 order={table.order}
@@ -168,7 +174,7 @@ export function UserView() {
                 onSelectAllRows={(checked) =>
                   table.onSelectAllRows(
                     checked,
-                    users.map((user) => user.id)
+                    users.map((u) => u.id)
                   )
                 }
                 headLabel={[
@@ -191,6 +197,7 @@ export function UserView() {
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
                       onViewDetail={() => handleViewDetail(row)}
+                      onEdit={() => handleOpenEditDialog(row)}
                     />
                   ))}
 
@@ -207,8 +214,8 @@ export function UserView() {
 
         <TablePagination
           component="div"
-          page={table.page}
           count={users.length}
+          page={table.page}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           rowsPerPageOptions={[5, 10, 25]}
@@ -216,63 +223,115 @@ export function UserView() {
         />
       </Card>
 
-      {/* Dialog konfirmasi hapus */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Konfirmasi Hapus</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Yakin ingin menghapus {table.selected.length} pengguna terpilih?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="inherit">
-            Batal
-          </Button>
-          <Button onClick={handleDeleteSelected} color="error" variant="contained">
-            Hapus
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog Tambah Pengguna */}
+      {/* Dialog Tambah */}
       <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Tambah Pengguna Baru</DialogTitle>
         <DialogContent dividers>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+          <Box display="flex" flexDirection="column" gap={2}>
             <input
               type="text"
               placeholder="Nama Lengkap"
               value={newUser.full_name}
               onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
             <input
               type="email"
               placeholder="Email"
               value={newUser.email}
               onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
             <input
               type="password"
               placeholder="Password"
               value={newUser.password}
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddDialog} color="inherit">
+          <Button onClick={handleCloseAddDialog}>Batal</Button>
+          <Button onClick={handleAddUser} variant="contained">Simpan</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Edit */}
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Pengguna</DialogTitle>
+        <DialogContent dividers>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <input
+              type="text"
+              placeholder="Nama Lengkap"
+              value={editUser?.full_name || ''}
+              onChange={(e) =>
+                setEditUser((prev) =>
+                  prev ? { ...prev, full_name: e.target.value } : prev
+                )
+              }
+              style={{
+                padding: '10px',
+                fontSize: '16px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+              }}
+            />
+
+            <input
+              type="email"
+              placeholder="Email"
+              value={editUser?.email || ''}
+              onChange={(e) =>
+                setEditUser((prev) =>
+                  prev ? { ...prev, email: e.target.value } : prev
+                )
+              }
+              style={{
+                padding: '10px',
+                fontSize: '16px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+              }}
+            />
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog} color="inherit">
             Batal
           </Button>
-          <Button onClick={handleAddUser} variant="contained">
-            Simpan
+          <Button onClick={handleEditUser} variant="contained">
+            Simpan Perubahan
           </Button>
         </DialogActions>
       </Dialog>
 
 
+      {/* Dialog Detail */}
+      <Dialog open={!!selectedUser} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
+        <DialogTitle>Detail Pengguna</DialogTitle>
+        <DialogContent dividers>
+          <Typography><strong>Nama:</strong> {selectedUser?.full_name}</Typography>
+          <Typography><strong>Email:</strong> {selectedUser?.email}</Typography>
+          <Typography><strong>Tanggal:</strong> {formatDate(selectedUser?.createdAt)}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDetail}>Tutup</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Hapus */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle>Hapus Pengguna</DialogTitle>
+        <DialogContent>
+          <Typography>Yakin ingin menghapus {table.selected.length} pengguna?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)}>Batal</Button>
+          <Button onClick={handleDeleteSelected} variant="contained" color="error">Hapus</Button>
+        </DialogActions>
+      </Dialog>
+
+      
       {/* Detail Dialog */}
       {selectedUser && (
         <Dialog open={!!selectedUser} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
@@ -297,18 +356,8 @@ export function UserView() {
       )}
 
       {/* Snackbar */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <MuiAlert
-          onClose={handleSnackbarClose}
-          severity={snackbarSeverity}
-          elevation={6}
-          variant="filled"
-        >
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={handleSnackbarClose}>
+        <MuiAlert onClose={handleSnackbarClose} severity={snackbarSeverity} elevation={6} variant="filled">
           {snackbarMessage}
         </MuiAlert>
       </Snackbar>

@@ -22,7 +22,7 @@ import { TableEmptyRows } from '../table-empty-rows';
 import { UserTableToolbar } from '../packet-table-toolbar';
 import { emptyRows, applyFilter, getComparator } from '../utils';
 
-import api from '../../../services/api'; // Import API
+import api from '../../../services/api';
 import { UserProps } from '../types';
 
 export function PacketView() {
@@ -32,14 +32,16 @@ export function PacketView() {
   const [filterName, setFilterName] = useState('');
   const [selectedPacket, setselectedPacket] = useState<UserProps | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [newPacket, setnewPacket] = useState({ receipt_number: '', packet_name: '', destination: '' });
+
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [editPacket, setEditPacket] = useState<UserProps | null>(null);
 
   // Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
-
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [newPacket, setnewPacket] = useState({ receipt_number: '', packet_name: '', destination: '' });
 
   const handleSnackbarClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') return;
@@ -52,10 +54,23 @@ export function PacketView() {
     return new Date(dateString).toLocaleDateString('id-ID', options);
   };
 
+  const fetchPacket = async () => {
+    try {
+      const response = await api.get('/packet');
+      setPacket(response.data.packets);
+    } catch (error) {
+      console.error('Error fetching packet:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPacket();
+  }, []);
+
   const handleOpenAddDialog = () => {
-  setnewPacket({ receipt_number: '', packet_name: '', destination: '' });
-  setOpenAddDialog(true);
-};
+    setnewPacket({ receipt_number: '', packet_name: '', destination: '' });
+    setOpenAddDialog(true);
+  };
 
   const handleCloseAddDialog = () => {
     setOpenAddDialog(false);
@@ -76,19 +91,6 @@ export function PacketView() {
       setSnackbarOpen(true);
     }
   };
-
-  useEffect(() => {
-    const fetchpacket = async () => {
-      try {
-        const response = await api.get('/packet');
-        setPacket(response.data.packets);
-      } catch (error) {
-        console.error('Error fetching packet:', error);
-      }
-    };
-    fetchpacket();
-  }, []);
-
 
   const handleOpenDeleteDialog = () => {
     setOpenDeleteDialog(true);
@@ -118,14 +120,6 @@ export function PacketView() {
     }
   };
 
-  const dataFiltered = applyFilter({
-    inputData: packet,
-    comparator: getComparator(table.order, table.orderBy),
-    filterName,
-  });
-
-  const notFound = !dataFiltered.length && !!filterName;
-
   const handleViewDetail = (user: UserProps) => {
     setselectedPacket(user);
   };
@@ -134,14 +128,50 @@ export function PacketView() {
     setselectedPacket(null);
   };
 
+  const handleOpenEditDialog = (packetData: UserProps) => {
+    setEditPacket(packetData);
+    setOpenEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setEditPacket(null);
+  };
+
+  const handleEditPacket = async () => {
+    if (!editPacket) return;
+
+    try {
+      const response = await api.put(`/packet/${editPacket.id}`, editPacket);
+      setPacket((prev) =>
+        prev.map((pkt) => (pkt.id === editPacket.id ? response.data.data : pkt))
+      );
+      handleCloseEditDialog();
+      setSnackbarMessage('Paket berhasil diperbarui.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Gagal mengupdate paket:', error);
+      setSnackbarMessage('Gagal memperbarui paket.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const dataFiltered = applyFilter({
+    inputData: packet,
+    comparator: getComparator(table.order, table.orderBy),
+    filterName,
+  });
+
+  const notFound = !dataFiltered.length && !!filterName;
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={5} px={2}>
-        <Typography variant="h4">
-          Daftar Paket
-        </Typography>
+        <Typography variant="h4">Daftar Paket</Typography>
         <Button variant="contained" onClick={handleOpenAddDialog} sx={{ height: 40 }}>
-          Tambah Packet
+          Tambah Paket
         </Button>
       </Box>
 
@@ -174,7 +204,7 @@ export function PacketView() {
                 headLabel={[
                   { id: 'receipt_number', label: 'Nomor Resi' },
                   { id: 'packet_name', label: 'Nama Paket' },
-                   { id: 'destination', label: 'Tujuan' },
+                  { id: 'destination', label: 'Tujuan' },
                   { id: 'createdAt', label: 'Tanggal Pembuatan' },
                   { id: 'status', label: 'Status' },
                   { id: '' },
@@ -193,6 +223,7 @@ export function PacketView() {
                       selected={table.selected.includes(row.id)}
                       onSelectRow={() => table.onSelectRow(row.id)}
                       onViewDetail={() => handleViewDetail(row)}
+                      onEdit={() => handleOpenEditDialog(row)}
                     />
                   ))}
 
@@ -218,25 +249,7 @@ export function PacketView() {
         />
       </Card>
 
-      {/* Dialog konfirmasi hapus */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Konfirmasi Hapus</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Yakin ingin menghapus {table.selected.length} item terpilih?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="inherit">
-            Batal
-          </Button>
-          <Button onClick={handleDeleteSelected} color="error" variant="contained">
-            Hapus
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog Tambah Pengguna */}
+      {/* Dialog Tambah */}
       <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Tambah Paket Baru</DialogTitle>
         <DialogContent dividers>
@@ -265,21 +278,70 @@ export function PacketView() {
               <option value="Jakarta">Jakarta</option>
               <option value="Semarang">Semarang</option>
             </select>
-
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddDialog} color="inherit">
-            Batal
-          </Button>
-          <Button onClick={handleAddPacket} variant="contained">
-            Simpan
-          </Button>
+          <Button onClick={handleCloseAddDialog} color="inherit">Batal</Button>
+          <Button onClick={handleAddPacket} variant="contained">Simpan</Button>
         </DialogActions>
       </Dialog>
 
+      {/* Dialog Edit */}
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Paket</DialogTitle>
+        <DialogContent dividers>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <input
+              type="text"
+              placeholder="Nomor Resi"
+              value={editPacket?.receipt_number || ''}
+              onChange={(e) =>
+                setEditPacket((prev) => prev ? { ...prev, receipt_number: e.target.value } : prev)
+              }
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="text"
+              placeholder="Nama Paket"
+              value={editPacket?.packet_name || ''}
+              onChange={(e) =>
+                setEditPacket((prev) => prev ? { ...prev, packet_name: e.target.value } : prev)
+              }
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            />
+            <select
+              value={editPacket?.destination || ''}
+              onChange={(e) =>
+                setEditPacket((prev) => prev ? { ...prev, destination: e.target.value } : prev)
+              }
+              style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }}
+            >
+              <option value="">Pilih tujuan</option>
+              <option value="Bandung">Bandung</option>
+              <option value="Jakarta">Jakarta</option>
+              <option value="Semarang">Semarang</option>
+            </select>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog} color="inherit">Batal</Button>
+          <Button onClick={handleEditPacket} variant="contained">Simpan Perubahan</Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Detail Dialog */}
+      {/* Dialog Hapus */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Konfirmasi Hapus</DialogTitle>
+        <DialogContent>
+          <Typography>Yakin ingin menghapus {table.selected.length} item terpilih?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="inherit">Batal</Button>
+          <Button onClick={handleDeleteSelected} color="error" variant="contained">Hapus</Button>
+        </DialogActions>
+      </Dialog>
+
+            {/* Detail Dialog */}
       {selectedPacket && (
         <Dialog open={!!selectedPacket} onClose={handleCloseDetail} maxWidth="sm" fullWidth>
           <DialogTitle>Detail Paket</DialogTitle>
@@ -315,12 +377,7 @@ export function PacketView() {
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <MuiAlert
-          onClose={handleSnackbarClose}
-          severity={snackbarSeverity}
-          elevation={6}
-          variant="filled"
-        >
+        <MuiAlert onClose={handleSnackbarClose} severity={snackbarSeverity} elevation={6} variant="filled">
           {snackbarMessage}
         </MuiAlert>
       </Snackbar>
